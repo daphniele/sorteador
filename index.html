@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Daqui saíram os números que deixaram o Loivo rico</title>
+<style>
+  :root {
+    --papel: #fffaf0;
+    --marrom: #5a3a22;
+    --caramelo: #d9964a;
+    --lima: #7cb342;
+    --borda: #8a5a35;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    font-family: "Trebuchet MS", "Segoe UI", system-ui, sans-serif;
+    color: var(--marrom);
+    background: #f7efdd url("fundo.jpeg") center / cover fixed;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  main {
+    width: 100%;
+    max-width: 520px;
+    background: rgba(255, 250, 240, 0.94);
+    border: 3px solid var(--borda);
+    border-radius: 24px;
+    padding: 28px 24px;
+    box-shadow: 6px 6px 0 rgba(90, 58, 34, 0.25);
+  }
+  h1 {
+    margin: 0 0 22px;
+    font-size: clamp(1.4rem, 5vw, 1.9rem);
+    line-height: 1.2;
+    text-align: center;
+  }
+  .campos {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+  }
+  label { display: block; font-size: 0.9rem; font-weight: bold; margin-bottom: 6px; }
+  input {
+    width: 100%;
+    padding: 10px;
+    font-size: 1.1rem;
+    font-family: inherit;
+    color: var(--marrom);
+    background: #fff;
+    border: 2px solid var(--borda);
+    border-radius: 12px;
+  }
+  input:focus-visible, button:focus-visible { outline: 3px solid var(--lima); outline-offset: 2px; }
+  button {
+    width: 100%;
+    margin-top: 18px;
+    padding: 14px;
+    font-size: 1.15rem;
+    font-weight: bold;
+    font-family: inherit;
+    color: #fff;
+    background: var(--caramelo);
+    border: 3px solid var(--borda);
+    border-radius: 14px;
+    cursor: pointer;
+    box-shadow: 0 4px 0 var(--borda);
+  }
+  button:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--borda); }
+  #erro { min-height: 1.4em; margin: 12px 0 0; color: #b3261e; font-weight: bold; text-align: center; }
+  #resultado {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: center;
+    margin-top: 8px;
+  }
+  .bola {
+    min-width: 58px;
+    padding: 10px 14px;
+    font-size: 1.4rem;
+    font-weight: bold;
+    text-align: center;
+    background: #fff;
+    border: 3px solid var(--borda);
+    border-radius: 999px;
+    box-shadow: 0 3px 0 var(--borda);
+  }
+  .bola.girando { color: #b9a58f; }
+  @media (max-width: 420px) { .campos { grid-template-columns: 1fr; } }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<main>
+  <h1>Daqui saíram os números que deixaram o Loivo rico</h1>
+
+  <div class="campos">
+    <div>
+      <label for="inicio">Número inicial</label>
+      <input id="inicio" type="number" value="1" inputmode="numeric">
+    </div>
+    <div>
+      <label for="fim">Número final</label>
+      <input id="fim" type="number" value="60" inputmode="numeric">
+    </div>
+    <div>
+      <label for="qtd">Quantidade</label>
+      <input id="qtd" type="number" value="6" min="1" inputmode="numeric">
+    </div>
+  </div>
+
+  <button id="sortear" type="button">Sortear</button>
+  <p id="erro" role="alert"></p>
+  <div id="resultado" aria-live="polite"></div>
+</main>
+
+<script>
+  const $ = (id) => document.getElementById(id);
+  let animando = false;
+
+  function sortear() {
+    if (animando) return;
+    const inicio = parseInt($("inicio").value, 10);
+    const fim = parseInt($("fim").value, 10);
+    const qtd = parseInt($("qtd").value, 10);
+    const erro = $("erro");
+    const caixa = $("resultado");
+    erro.textContent = "";
+    caixa.innerHTML = "";
+
+    if ([inicio, fim, qtd].some(Number.isNaN)) {
+      erro.textContent = "Preencha os três campos com números.";
+      return;
+    }
+    if (inicio > fim) {
+      erro.textContent = "O número inicial deve ser menor ou igual ao final.";
+      return;
+    }
+    if (qtd < 1) {
+      erro.textContent = "A quantidade deve ser pelo menos 1.";
+      return;
+    }
+    const total = fim - inicio + 1;
+    if (qtd > total) {
+      erro.textContent = "Só existem " + total + " números entre " + inicio + " e " + fim + ", então não dá para sortear " + qtd + " sem repetir.";
+      return;
+    }
+
+    // Sorteio sem repetição (Fisher-Yates parcial) com aleatoriedade criptográfica
+    const sorteados = new Set();
+    const buf = new Uint32Array(1);
+    const limite = Math.floor(4294967296 / total) * total;
+    while (sorteados.size < qtd) {
+      let r;
+      do { crypto.getRandomValues(buf); r = buf[0]; } while (r >= limite);
+      sorteados.add(inicio + (r % total));
+    }
+    const lista = [...sorteados].sort((a, b) => a - b);
+
+    // Mostra os números um por vez
+    animando = true;
+    $("sortear").disabled = true;
+    lista.forEach((n, i) => {
+      const el = document.createElement("div");
+      el.className = "bola girando";
+      el.textContent = "?";
+      caixa.appendChild(el);
+      setTimeout(() => {
+        el.textContent = n;
+        el.classList.remove("girando");
+        if (i === lista.length - 1) {
+          animando = false;
+          $("sortear").disabled = false;
+        }
+      }, 250 + i * 180);
+    });
+  }
+
+  $("sortear").addEventListener("click", sortear);
+  document.addEventListener("keydown", (e) => { if (e.key === "Enter") sortear(); });
+</script>
+</body>
+</html>
